@@ -22,7 +22,7 @@ from ptsemseg.models.segnet import *
 class NYUD2Loader(data.Dataset):
     def __init__(self, root, split= "training", is_transform = False, img_size=(240,320), splitRate = 0.7):
         self.root = root + 'imgs/'
-        self.n_classes = 40
+        self.n_classes = 10
         self.split = split
         self.splitRate = splitRate
         self.is_transform = is_transform
@@ -31,7 +31,7 @@ class NYUD2Loader(data.Dataset):
         self.files_rgb = recursive_glob(rootdir=self.root + 'rgb/', suffix='.png')
         self.datasize = len(self.files_rgb)
         self.startIndex = 0 if(split=="training") else int(self.datasize*splitRate)
-
+        self.interestedLables = np.array([5,11,36,49,83,88,157,158,169])
     def __len__(self):
         if(self.split == "training"):
             return int(self.datasize*self.splitRate)
@@ -41,7 +41,7 @@ class NYUD2Loader(data.Dataset):
         index = index + self.startIndex+1
         rgb_path = self.root + 'rgb/' + str(index) + '.png'
         hha_path = self.root + 'hha/' + str(index) + '.png'
-        lbl_path = self.root + 'label/' + str(index) + '.png'
+        lbl_path = self.root + 'labels_u16/' + str(index) + '.png'
 
         rgb = imageio.imread(rgb_path)
         rgb = np.array(rgb, dtype = np.uint8)
@@ -49,7 +49,7 @@ class NYUD2Loader(data.Dataset):
         hha = np.array(hha, dtype = np.uint8)
         lbl = imageio.imread(lbl_path)
         lbl = np.array(lbl, dtype = np.int32)
-
+        lbl[np.isnan(lbl, self.interestedLables) == F]
         img = np.concatenate((rgb,hha), axis = 2)
 
         if(self.transform):
@@ -75,7 +75,7 @@ class NYUD2Loader(data.Dataset):
         lbl = torch.from_numpy(lbl).long()
         return img, lbl
 mbatch_size = 4
-mn_epoch = 10
+mn_epoch = 400
 mvisdom = False
 march = 'segnet'
 mdataset = 'nyud2'
@@ -100,7 +100,7 @@ model.cuda()
 if hasattr(model.module, 'optimizer'):
     optimizer = model.module.optimizer
 else:
-    optimizer = torch.optim.SGD(model.parameters(), lr=ml_rate, momentum=0.99, weight_decay=5e-4)
+    optimizer = torch.optim.SGD(model.parameters(), lr=ml_rate, momentum=0.9, weight_decay=5e-4)
 
 if hasattr(model.module, 'loss'):
     print('Using custom loss')
@@ -112,6 +112,9 @@ running_metrics = runningScore(traindata.n_classes)
 
 best_iou = -100.0
 for epoch in range(mn_epoch):
+    if(epoch %100 == 0):
+        ml_rate = ml_rate * 0.1
+        optimizer = torch.optim.SGD(model.parameters(), lr=ml_rate, momentum=0.9, weight_decay=5e-4)
     model.train()
     for i, (images, labels) in enumerate(trainloader):
         images = Variable(images.cuda())

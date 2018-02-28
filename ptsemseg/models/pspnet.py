@@ -9,7 +9,7 @@ from ptsemseg.models.utils import *
 
 
 class pspnet(nn.Module):
-    
+
     """
     Pyramid Scene Parsing Network
     URL: https://arxiv.org/abs/1612.01105
@@ -23,14 +23,15 @@ class pspnet(nn.Module):
 
     """
 
-    def __init__(self, n_classes=21, block_config=[3, 4, 23, 3]):
+    def __init__(self, n_classes=21, block_config=[3, 4, 23, 3],in_channels=3,):
         super(pspnet, self).__init__()
-        
+
         self.block_config = block_config
         self.n_classes = n_classes
+        self.in_channels = in_channels
 
         # Encoder
-        self.convbnrelu1_1 = conv2DBatchNormRelu(in_channels=3, k_size=3, n_filters=64,
+        self.convbnrelu1_1 = conv2DBatchNormRelu(in_channels=self.in_channels, k_size=3, n_filters=64,
                                                  padding=1, stride=2, bias=False)
         self.convbnrelu1_2 = conv2DBatchNormRelu(in_channels=64, k_size=3, n_filters=64,
                                                  padding=1, stride=1, bias=False)
@@ -40,14 +41,14 @@ class pspnet(nn.Module):
         # Vanilla Residual Blocks
         self.res_block2 = residualBlockPSP(self.block_config[0], 128, 64, 256, 1, 1)
         self.res_block3 = residualBlockPSP(self.block_config[1], 256, 128, 512, 2, 1)
-        
+
         # Dilated Residual Blocks
         self.res_block4 = residualBlockPSP(self.block_config[2], 512, 256, 1024, 1, 2)
         self.res_block5 = residualBlockPSP(self.block_config[3], 1024, 512, 2048, 1, 4)
-        
+
         # Pyramid Pooling Module
         self.pyramid_pooling = pyramidPooling(2048, [6, 3, 2, 1])
-       
+
         # Final conv layers
         self.cbr_final = conv2DBatchNormRelu(4096, 512, 3, 1, 1, False)
         self.dropout = nn.Dropout2d(p=0.1, inplace=True)
@@ -76,7 +77,7 @@ class pspnet(nn.Module):
         x = self.dropout(x)
 
         x = self.classification(x)
-        x = F.upsample(x, size=inp_shape, mode='bilinear') 
+        x = F.upsample(x, size=inp_shape, mode='bilinear')
         return x
 
     def load_pretrained_model(self, model_path):
@@ -91,7 +92,7 @@ class pspnet(nn.Module):
 
         def _get_layer_params(layer, ltype):
 
-            if ltype == 'BNData': 
+            if ltype == 'BNData':
                 gamma = np.array(layer.blobs[0].data)
                 beta = np.array(layer.blobs[1].data)
                 mean = np.array(layer.blobs[2].data)
@@ -105,7 +106,7 @@ class pspnet(nn.Module):
                 if is_bias:
                     bias = np.array(layer.blobs[1].data)
                 return [weights, bias]
-            
+
             elif ltype == 'InnerProduct':
                 raise Exception("Fully connected layers {}, not supported".format(ltype))
 
@@ -145,11 +146,11 @@ class pspnet(nn.Module):
         def _transfer_conv(layer_name, module):
             weights, bias = layer_params[layer_name]
             w_shape = np.array(module.weight.size())
-            
+
             print("CONV {}: Original {} and trans weights {}".format(layer_name,
                                                                   w_shape,
                                                                   weights.shape))
-            
+
             module.weight.data.copy_(torch.from_numpy(weights).view_as(module.weight))
 
             if len(bias) != 0:
@@ -163,9 +164,9 @@ class pspnet(nn.Module):
         def _transfer_conv_bn(conv_layer_name, mother_module):
             conv_module = mother_module[0]
             bn_module = mother_module[1]
-            
+
             _transfer_conv(conv_layer_name, conv_module)
-            
+
             mean, var, gamma, beta = layer_params[conv_layer_name+'/bn']
             print("BN {}: Original {} and trans weights {}".format(conv_layer_name,
                                                                    bn_module.running_mean.size(),
@@ -192,8 +193,8 @@ class pspnet(nn.Module):
                 residual_layer = block_module.layers[layer_idx-1]
                 residual_conv_bn_dic = {'_'.join(map(str, [prefix, layer_idx, '1x1_reduce'])): residual_layer.cbr1.cbr_unit,
                                         '_'.join(map(str, [prefix, layer_idx, '3x3'])):  residual_layer.cbr2.cbr_unit,
-                                        '_'.join(map(str, [prefix, layer_idx, '1x1_increase'])): residual_layer.cb3.cb_unit,} 
-                
+                                        '_'.join(map(str, [prefix, layer_idx, '1x1_increase'])): residual_layer.cb3.cb_unit,}
+
                 for k, v in residual_conv_bn_dic.items():
                     _transfer_conv_bn(k, v)
 
@@ -201,7 +202,7 @@ class pspnet(nn.Module):
         convbn_layer_mapping = {'conv1_1_3x3_s2': self.convbnrelu1_1.cbr_unit,
                                 'conv1_2_3x3': self.convbnrelu1_2.cbr_unit,
                                 'conv1_3_3x3': self.convbnrelu1_3.cbr_unit,
-                                'conv5_3_pool6_conv': self.pyramid_pooling.paths[0].cbr_unit, 
+                                'conv5_3_pool6_conv': self.pyramid_pooling.paths[0].cbr_unit,
                                 'conv5_3_pool3_conv': self.pyramid_pooling.paths[1].cbr_unit,
                                 'conv5_3_pool2_conv': self.pyramid_pooling.paths[2].cbr_unit,
                                 'conv5_3_pool1_conv': self.pyramid_pooling.paths[3].cbr_unit,
@@ -251,15 +252,15 @@ class pspnet(nn.Module):
         for sx, ex in x_ends:
             for sy, ey in y_ends:
                 slice_count += 1
-            
+
                 img_slice = img[:, sx:ex, sy:ey]
                 img_slice_flip = np.copy(img_slice[:,:,::-1])
-            
+
                 is_model_on_cuda = next(self.parameters()).is_cuda
 
                 inp = Variable(torch.unsqueeze(torch.from_numpy(img_slice).float(), 0), volatile=True)
                 flp = Variable(torch.unsqueeze(torch.from_numpy(img_slice_flip).float(), 0), volatile=True)
-                
+
                 if is_model_on_cuda:
                     inp = inp.cuda()
                     flp = flp.cuda()
@@ -267,10 +268,10 @@ class pspnet(nn.Module):
                 psub1 = F.softmax(self.forward(inp), dim=1).data.cpu().numpy()
                 psub2 = F.softmax(self.forward(flp), dim=1).data.cpu().numpy()
                 psub = (psub1 + psub2[:, :, :, ::-1]) / 2.0
-    
+
                 pred[:, :, sx:ex, sy:ey] = psub
                 count[sx:ex, sy:ey] += 1.0
- 
+
         score = (pred / count[None, None, ...]).astype(np.float32)[0]
         return score / score.sum(axis=0)
 
@@ -283,10 +284,10 @@ if __name__ == '__main__':
     import scipy.misc as m
     from ptsemseg.loader.cityscapes_loader import cityscapesLoader as cl
     psp = pspnet(n_classes=19)
-    
+
     # Just need to do this one time
     #psp.load_pretrained_model(model_path='/home/meet/models/pspnet101_cityscapes.caffemodel')
-    
+
     torch.save(psp.state_dict(), "psp.pth")
     psp.load_state_dict(torch.load('psp.pth'))
 
@@ -303,8 +304,8 @@ if __name__ == '__main__':
     img = img.astype(np.float64)
     img -= np.array([123.68, 116.779, 103.939])[:, None, None]
     img = np.copy(img[::-1, :, :])
-    flp = np.copy(img[:, :, ::-1]) 
-    
+    flp = np.copy(img[:, :, ::-1])
+
 
     # Warmup model
     #warmup = Variable(torch.unsqueeze(torch.from_numpy(flp).float(), 0).cuda(cd))
@@ -314,6 +315,6 @@ if __name__ == '__main__':
     out = psp.tile_predict(img)
     pred = np.argmax(out, axis=0)
     decoded = dst.decode_segmap(pred)
-    m.imsave('frankfurt_tiled.png', decoded) 
+    m.imsave('frankfurt_tiled.png', decoded)
 
     print("Output Shape {} \t Input Shape {}".format(out.shape, img.shape))

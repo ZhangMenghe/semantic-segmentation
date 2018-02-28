@@ -30,7 +30,7 @@ class runningScore(object):
         hist = self.confusion_matrix
         acc = np.diag(hist).sum() / hist.sum()
         acc_cls = np.diag(hist) / hist.sum(axis=1)
-        acc_cls = np.nanmean(acc_cls)
+        acc_cls_score = np.nanmean(acc_cls)
         iu = np.diag(hist) / (hist.sum(axis=1) + hist.sum(axis=0) - np.diag(hist))
         mean_iu = np.nanmean(iu)
         freq = hist.sum(axis=1) / hist.sum()
@@ -38,7 +38,8 @@ class runningScore(object):
         cls_iu = dict(zip(range(self.n_classes), iu))
 
         return {'Overall Acc: \t': acc,
-                'Mean Acc : \t': acc_cls,
+                'Mean Acc : \t': acc_cls_score,
+                'Mean Acc each :\t': acc_cls,
                 'FreqW Acc : \t': fwavacc,
                 'Mean IoU : \t': mean_iu,}, cls_iu
 
