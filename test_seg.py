@@ -36,10 +36,10 @@ class SUNRGBDTESTLoader(data.Dataset):
 
         self.folders = ['rgb/', 'hha/'] if folderNameList == None else folderNameList
         self.tailnames  = ['.png','.png'] if tailNames == None else tailNames
-        # label:
-        self.lableColor = {1:[173,216,230], 2:[255,0,0], 3:[224,255,255], 4:[165,42,42], 5:[238,216,174],\
-        6:[255,165,0], 7:[173,255,47],8:[132,112,255],9:[147,112,219],10:[139,69,0],11:[255,106,106],12:[255,218,185],13:[255,240,245]}
+
         # 1	Bed # 2	Books  # 3	Ceiling # 4	Chair# 5	Floor# 6	Furniture# 7	Objects# 8	Picture# 9	Sofa# 10	Table# 11	TV# 12	Wall# 13	Window
+        self.labelColor = {1:[173,216,230], 2:[139, 0 ,139], 3:[255,0,0], 4:[156, 156, 156], 5:[0,255,0],\
+        6:[255,165,0], 7:[173,255,47],8:[255, 228, 225],9:[159, 121, 238],10:[139,69,0],11:[255,106,106],12:[0,0,255],13:[255,2552,255]}
     def __len__(self):
         return self.datasize
 
@@ -74,17 +74,17 @@ class SUNRGBDTESTLoader(data.Dataset):
 
         return img
 
-    def decode_segmap(self, coded, plot=True):
+    def decode_segmap(self, coded, plot=False):
         r = coded.copy()
         g = coded.copy()
         b = coded.copy()
         rgb = np.zeros((coded.shape[0], coded.shape[1],3), dtype=np.uint8)
         foundClass = np.unique(coded)
         for label in foundClass:
-            if (label in self.lableColor):
-                color = self.lableColor[label]
+            if (label in self.labelColor):
+                color = self.labelColor[label]
             else:
-                color = [255,0,0]
+                color = [0,0,0]
             idxMat = (coded == label)
             r[idxMat] = color[0]
             g[idxMat] = color[1]
@@ -96,9 +96,20 @@ class SUNRGBDTESTLoader(data.Dataset):
             cv2.imshow("inside",rgb)
         return rgb
 
+def writeColorRef(labelColor):
+    labelMap = np.zeros((300,400,3), np.uint8)
+    for i in range(3):
+        for j in range(4):
+            r,g,b = labelColor[4*i+j + 1]
+            labelMap[100*i:100*(i+1), 80*j:80*(j+1)] = [b,g,r]
+    labelMap[200:300, 320:400]  = [255,255,255]
+    cv2.imwrite("labelMap.png", labelMap)
+
 data_path = "C:/Projects/SUNRGB-dataset/"
 folderList = ['SUNRGBD-test_images/', 'testing/hha/']
 tailTypes =  ['.jpg','.png']
+testList=np.array([1970,1972,1975,2115,2243,2291,2293,2295,2297,2300,2321,2322,2330,2342,2348,2349,2352,2354,2377,2411,2441,2490])
+numOfTest = max(testList)
 testdata = SUNRGBDTESTLoader(data_path, folderList, tailTypes, is_transform=True)
 testloader = torch.utils.data.DataLoader(testdata, batch_size = 1, shuffle = False)
 # Setup Model
@@ -109,17 +120,21 @@ state = torch.load("pspnet_sunrgbd_sun_model.pkl")['model_state']
 state = convert(state)
 model.load_state_dict(state)
 model.eval()
-
+# writeColorRef(testdata.labelColor)
 model.cuda(0)
 for i, images in enumerate(testloader):
+    idx = i+1
+    if(idx>numOfTest):
+        break
+    if(idx not in testList):
+        continue
     images = Variable(images.cuda(0), volatile=True)
     outputs = F.softmax(model(images), dim=1)
     pred = np.squeeze(outputs.data.max(1)[1].cpu().numpy(), axis=0)
-    decoded = testdata.decode_segmap(pred)
+    # decoded = testdata.decode_segmap(pred)
     print('Classes found: ', np.unique(pred))
     # print(decoded.shape)
     # colored = cv2.cvtColor(decoded, cv2.COLOR_GRAY2BGR)
-    print(decoded[:10,:10,:])
-    cv2.imshow("test",decoded)
-    cv2.waitKey(0)
-    # imageio.imwrite("test_out_" + str(i)+".png", decoded)
+    # cv2.imshow("test",decoded)
+    # cv2.waitKey(0)
+    cv2.imwrite("pred" + str(i+1)+".png", pred)
