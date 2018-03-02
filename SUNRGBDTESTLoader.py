@@ -1,0 +1,83 @@
+import torch
+from torch.utils import data
+import numpy as np
+import os
+import imageio
+from skimage.transform import resize
+class SUNRGBDTESTLoader(data.Dataset):
+    def __init__(self, rootname, folderNameList= None, tailNames= None, is_transform = False, img_size=(240,320)):
+        self.root = rootname
+
+        self.n_classes = 13
+
+        self.is_transform = is_transform
+        self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        self.mean = np.array([125.91207973, 116.5486107 , 110.43807554, 132.84413787,  81.09253009,  93.7494152])
+        self.datasize = len(os.listdir(self.root + 'SUNRGBD-train_images/'))
+
+        self.folders = ['rgb/', 'hha/'] if folderNameList == None else folderNameList
+        self.tailnames  = ['.png','.png'] if tailNames == None else tailNames
+
+        # 1	Bed # 2	Books  # 3	Ceiling # 4	Chair# 5	Floor# 6	Furniture# 7	Objects# 8	Picture# 9	Sofa# 10	Table# 11	TV# 12	Wall# 13	Window
+        self.labelColor = {1:[173,216,230], 2:[139, 0 ,139], 3:[255,0,0], 4:[156, 156, 156], 5:[0,255,0],\
+        6:[255,165,0], 7:[173,255,47],8:[255, 228, 225],9:[159, 121, 238],10:[139,69,0],11:[255,106,106],12:[0,0,255],13:[255,2552,255]}
+    def __len__(self):
+        return self.datasize
+
+    def __getitem__(self, imageName):
+        rgb_path = self.root + self.folders[0] + imageName + self.tailnames[0]
+        hha_path = self.root + self.folders[1] + imageName + self.tailnames[1]
+
+        rgb = imageio.imread(rgb_path)
+        hha = imageio.imread(hha_path)
+        img = np.concatenate((rgb,hha), axis = 2)
+
+        if(self.transform):
+            img = self.transform(img)
+        # print("INSIDE:"+str(img.shape))
+        return img
+
+    def transform(self, img):
+        img = img[:, :, ::-1]
+        img = img.astype(np.float64)
+        img -= self.mean
+        img = resize(img, (self.img_size[0], self.img_size[1]), mode='reflect')
+        # Resize scales images from 0 to 255, thus we need
+        # to divide by 255.0
+        img = img.astype(float) / 255.0
+        # NHWC -> NCWH
+        img = img.transpose(2, 0, 1)
+
+        img = torch.from_numpy(img).float()
+
+        return img
+
+    def decode_segmap(self, coded, plot=False):
+        r = coded.copy()
+        g = coded.copy()
+        b = coded.copy()
+        rgb = np.zeros((coded.shape[0], coded.shape[1],3), dtype=np.uint8)
+        foundClass = np.unique(coded)
+        for label in foundClass:
+            if (label in self.labelColor):
+                color = self.labelColor[label]
+            else:
+                color = [0,0,0]
+            idxMat = (coded == label)
+            r[idxMat] = color[0]
+            g[idxMat] = color[1]
+            b[idxMat] = color[2]
+        rgb[:,:,0] = r
+        rgb[:,:,1] = g
+        rgb[:,:,2] = b
+        if plot:
+            cv2.imshow("inside",rgb)
+        return rgb
+    def writeColorRef(self):
+        labelMap = np.zeros((300,400,3), np.uint8)
+        for i in range(3):
+            for j in range(4):
+                r,g,b = self.labelColor[4*i+j + 1]
+                labelMap[100*i:100*(i+1), 80*j:80*(j+1)] = [b,g,r]
+        labelMap[200:300, 320:400]  = [255,255,255]
+        cv2.imwrite("labelMap.png", labelMap)
