@@ -28,9 +28,7 @@ class pspClassifier(object):
     def fit(self, imageName):
         torchLoader = torch.utils.data.DataLoader([self.dataset[imageName]], batch_size = 1, shuffle = False)
         for image in torchLoader:
-            print(image.shape)
             image = Variable(image.cuda(0), volatile=True)
-            print(image.shape)
             outputs = F.softmax(self.model(image), dim=1)
             pred = np.squeeze(outputs.data.max(1)[1].cpu().numpy(), axis=0)
             print('Classes found: ', np.unique(pred))
