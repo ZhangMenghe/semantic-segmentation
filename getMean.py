@@ -2,9 +2,7 @@ import os
 import numpy as np
 import imageio
 
-def getMeanValue():
-    rgb_path = "C:/Projects/SUNRGB-dataset/SUNRGBD-train_images/"
-    hha_path = "C:/Projects/SUNRGB-dataset/hha/"
+def getMeanValue(rgb_path,hha_path):
     path_set = [rgb_path, hha_path]
     result = []
     for path in path_set:
@@ -18,3 +16,4 @@ def getMeanValue():
             mean_record[2] += np.mean(img[:,:,2])
         result.extend(mean_record/numOfFiles)
     return result
+print(getMeanValue("C:/Projects/SUNRGB-dataset/_training/imgs/", "C:/Projects/SUNRGB-dataset/_training/hha/"))
