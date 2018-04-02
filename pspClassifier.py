@@ -9,8 +9,8 @@ import numpy as np
 
 class pspClassifier(object):
     """docstring for pspClassifier."""
-    def __init__(self, root_path, folderList, tailTypes = ['.jpg','.png'], modelFile="pspnet_sunrgbd_sun_model.pkl"):
-        self.dataset = SUNRGBDTESTLoader(root_path, folderList, tailTypes, is_transform=True)
+    def __init__(self, root_path, srcImgPath, tailTypes = ['.jpg','.png'], modelFile="pspnet_sunrgbd_sun_model.pkl"):
+        self.dataset = SUNRGBDTESTLoader(root_path, srcImgPath, is_transform=False)
 
         # Setup Model
         self.model = pspnet(n_classes=self.dataset.n_classes, in_channels=6)
@@ -25,8 +25,11 @@ class pspClassifier(object):
             name = k[7:] # remove `module.`
             res[name] = v
         self.state =  res
-    def fit(self, imageName):
-        torchLoader = torch.utils.data.DataLoader([self.dataset[imageName]], batch_size = 1, shuffle = False)
+    def fit(self, imageName, hha):
+        rgb = self.dataset[imageName]
+        img = np.concatenate((rgb,hha), axis = 2)
+        img = self.dataset.transform(img)
+        torchLoader = torch.utils.data.DataLoader([img], batch_size = 1, shuffle = False)
         for image in torchLoader:
             image = Variable(image.cuda(0), volatile=True)
             outputs = F.softmax(self.model(image), dim=1)

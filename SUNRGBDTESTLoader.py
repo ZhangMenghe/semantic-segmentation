@@ -5,37 +5,24 @@ import os
 import imageio
 from skimage.transform import resize
 class SUNRGBDTESTLoader(data.Dataset):
-    def __init__(self, rootname, folderNameList= None, tailNames= None, is_transform = False, img_size=(240,320)):
+    def __init__(self, rootname, srcImgPath= None, is_transform = False, img_size=(240,320)):
         self.root = rootname
-
         self.n_classes = 13
-
         self.is_transform = is_transform
         self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
         self.mean = np.array([125.91207973, 116.5486107 , 110.43807554, 132.84413787,  81.09253009,  93.7494152])
-        self.datasize = len(os.listdir(self.root + 'SUNRGBD-train_images/'))
-
-        self.folders = ['rgb/', 'hha/'] if folderNameList == None else folderNameList
-        self.tailnames  = ['.png','.png'] if tailNames == None else tailNames
-
+        self.datasize = len(os.listdir(srcImgPath))
+        self.rgb_path = srcImgPath
         # 1	Bed # 2	Books  # 3	Ceiling # 4	Chair# 5	Floor# 6	Furniture# 7	Objects# 8	Picture# 9	Sofa# 10	Table# 11	TV# 12	Wall# 13	Window
         self.labelColor = {1:[173,216,230], 2:[139, 0 ,139], 3:[255,0,0], 4:[156, 156, 156], 5:[0,255,0],\
         6:[255,165,0], 7:[173,255,47],8:[255, 228, 225],9:[159, 121, 238],10:[139,69,0],11:[255,106,106],12:[0,0,255],13:[255,2552,255]}
+
     def __len__(self):
         return self.datasize
 
     def __getitem__(self, imageName):
-        rgb_path = self.root + self.folders[0] + imageName + self.tailnames[0]
-        hha_path = self.root + self.folders[1] + imageName + self.tailnames[1]
-
-        rgb = imageio.imread(rgb_path)
-        hha = imageio.imread(hha_path)
-        img = np.concatenate((rgb,hha), axis = 2)
-
-        if(self.transform):
-            img = self.transform(img)
-        # print("INSIDE:"+str(img.shape))
-        return img
+        rgb = imageio.imread(self.rgb_path + imageName)
+        return rgb
 
     def transform(self, img):
         img = img[:, :, ::-1]

@@ -157,7 +157,7 @@ for epoch in range(start_epoch, mn_epoch):
 
 	fp = open(loss_file,'a+')
 	fp.write("Epoch [%d/%d]\n" % (epoch+1, mn_epoch))
-	fp.write('\t'.join(storeLoss) + '\n')
+	fp.write('\t'.join(str(loss) for loss in storeLoss) + '\n')
 	fp.close()
 
 	model.eval()
