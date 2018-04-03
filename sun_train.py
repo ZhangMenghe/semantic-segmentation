@@ -90,12 +90,13 @@ ml_rate = 0.1
 mresume = None
 data_path = "C:/Projects/SUNRGB-dataset/_training/"
 loss_file = data_path+"loss.txt"
+acc_file = data_path + "acc.txt"
 # folderList = ['SUNRGBD-train_images/', 'hha/','train13labels/']
 folderList = ['imgs/', 'hha/','label12/']
 tailTypes =  ['.jpg','.png','.png']
 start_epoch = 0
-resume = False
-resume_root = "pspnet_sunrgbd_sun_model_resume.pkl"
+resume = True
+resume_root = "pspnet_sunrgbd_sun_model2_resume.pkl"
 traindata = SUNRGBDLoader(data_path, folderList, tailTypes, split='training', is_transform = True)
 trainloader = torch.utils.data.DataLoader(traindata, batch_size = mbatch_size, shuffle=True)
 
@@ -170,14 +171,21 @@ for epoch in range(start_epoch, mn_epoch):
 		gt = labels_val.data.cpu().numpy()
 		running_metrics.update(gt, pred)
 
-	score, class_iou = running_metrics.get_scores()
+	score, class_iou, recordLst = running_metrics.get_scores()
 	for k, v in score.items():
 	    print(k, v)
 	running_metrics.reset()
 
+	# record acc
+	fp = open(acc_file,'a+')
+	fp.write("Epoch [%d/%d]\n" % (epoch+1, mn_epoch))
+	fp.write('\t'.join(str(acc) for acc in recordLst) + '\n')
+	fp.close()
+
 	if score['Mean IoU : \t'] >= best_iou:
-	    best_iou = score['Mean IoU : \t']
-	    state = {'epoch': epoch+1,
-	             'model_state': model.state_dict(),
-	             'optimizer_state' : optimizer.state_dict(),}
-	    torch.save(state, "{}_{}_sun_model2_resume.pkl".format(march, mdataset))
+		best_iou = score['Mean IoU : \t']
+		print("best_iou-" + str(best_iou) + '\n')
+		state = {'epoch': epoch+1,
+		         'model_state': model.state_dict(),
+		         'optimizer_state' : optimizer.state_dict(),}
+		torch.save(state, "{}_{}_sun_model2_resume.pkl".format(march, mdataset))
