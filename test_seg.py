@@ -1,16 +1,30 @@
 from pspClassifier import *
-
-data_path = "C:/Projects/SUNRGB-dataset/"
-folderList = ['SUNRGBD-test_images/', 'testing/hha/']
+import cv2
+data_path = "C:/Projects/SUNRGB-dataset/_training/"
+folderList = ['imgs/', 'hha/']
+# folderList = ['SUNRGBD-test_images/', 'testing/hha/']
 tailTypes =  ['.jpg','.png']
-classifier = pspClassifier(data_path, folderList)
-pred = classifier.fit("1")
-print('MIE!!!!Classes found: ', np.unique(pred))
-
-# testList=np.array([1970,1972,1975,2115,2243,2291,2293,2295,2297,2300,2321,2322,2330,2342,2348,2349,2352,2354,2377,2411,2441,2490])
-# numOfTest = max(testList)
-#
-#
+labelName  = 'label12/'
+classifier = pspClassifier(data_path, data_path+folderList[0],modelFile ="pspnet_sunrgbd_sun_model2_resume.pkl")
+testList=np.array([1923,1935,2021,2129,2163,2210,2214,2250,2264])
+numOfTest = max(testList)
+for i in testList:
+    ori = cv2.imread(data_path+folderList[0]+str(i+1)+'.jpg')
+    label = cv2.imread(data_path+labelName+str(i+1)+'.png', 0)
+    hha = imageio.imread(data_path+folderList[1]+str(i+1)+'.png')
+    decoded_label = classifier.dataset.decode_segmap(label)
+    pred = classifier.fit(str( i+1)+'.jpg',hha)
+    # mat = np.zeros(label.shape)
+    # mat[np.where(pred == 5)] = 1
+    # cv2.imshow("test1", mat)
+    # cv2.waitKey(0)
+    decoded = classifier.dataset.decode_segmap(pred)
+    decoded = decoded.astype(np.uint8)
+    # cv2.imshow("test",decoded_label)
+    # cv2.waitKey(0)
+    cv2.imwrite("E:/ori-" + str(i+1)+'.jpg', ori)
+    cv2.imwrite("E:/ground-" + str(i+1)+'.png', decoded_label)
+    cv2.imwrite("E:/pred-" + str(i+1)+'.png', decoded)
 # for i, images in enumerate(testloader):
 #     idx = i+1
 #     # if(idx>numOfTest):

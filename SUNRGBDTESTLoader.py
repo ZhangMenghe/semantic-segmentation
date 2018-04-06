@@ -7,10 +7,10 @@ from skimage.transform import resize
 class SUNRGBDTESTLoader(data.Dataset):
     def __init__(self, rootname, srcImgPath= None, is_transform = False, img_size=(240,320)):
         self.root = rootname
-        self.n_classes = 13
+        self.n_classes = 12
         self.is_transform = is_transform
         self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
-        self.mean = np.array([125.91207973, 116.5486107 , 110.43807554, 132.84413787,  81.09253009,  93.7494152])
+        self.mean = np.array([125.74308659806684, 116.25128126375019, 110.39211491755876, 134.51503601619351, 79.703766694807911, 92.11112833151347])
         self.datasize = len(os.listdir(srcImgPath))
         self.rgb_path = srcImgPath
         # 1	Bed # 2	Books  # 3	Ceiling # 4	Chair# 5	Floor# 6	Furniture# 7	Objects# 8	Picture# 9	Sofa# 10	Table# 11	TV# 12	Wall# 13	Window
