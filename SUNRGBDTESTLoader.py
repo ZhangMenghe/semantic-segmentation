@@ -13,7 +13,7 @@ class SUNRGBDTESTLoader(data.Dataset):
         self.mean = np.array([125.74308659806684, 116.25128126375019, 110.39211491755876, 134.51503601619351, 79.703766694807911, 92.11112833151347])
         self.datasize = len(os.listdir(srcImgPath))
         self.rgb_path = srcImgPath
-        # 1	Bed # 2	Books  # 3	Ceiling # 4	Chair# 5	Floor# 6	Furniture# 7	Objects# 8	Picture# 9	Sofa# 10	Table# 11	TV# 12	Wall# 13	Window
+        #self.cate = ["unknown", "floor ","sofa ","chair ","bed ","NightStand","shelf","table","wall","onwallObjs","otherFurniture","ceiling"]
         self.labelColor = {1:[173,216,230], 2:[139, 0 ,139], 3:[255,0,0], 4:[156, 156, 156], 5:[0,255,0],\
         6:[255,165,0], 7:[173,255,47],8:[255, 228, 225],9:[159, 121, 238],10:[139,69,0],11:[255,106,106],12:[0,0,255],13:[255,2552,255]}
 
